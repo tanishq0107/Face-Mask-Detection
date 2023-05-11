@@ -1,0 +1,186 @@
+import os
+from keras.preprocessing import image
+import cv2
+categories = ['with_mask','without_mask']
+data = []
+for category in categories:
+    path = os.path.join('train',category)
+
+    label = categories.index(category)
+    
+    for file in os.listdir(path):
+        
+        img_path = os.path.join(path,file)
+        img = cv2.imread(img_path)
+        img = cv2.resize(img,(224,224))
+
+        data.append([img,label])
+
+        
+len(data)
+import random
+random.shuffle(data)
+X = []
+y = []
+for features,label in data:
+    X.append(features)
+    y.append(label)
+len(X)
+len(y)
+import numpy as np
+X = np.array(X) 
+y = np.array(y)
+X.shape
+y.shape
+y
+X = X/255
+from sklearn.model_selection import train_test_split
+X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.2)
+X_train.shape
+X_test.shape
+from keras.applications.vgg16 import VGG16
+vgg = VGG16()
+vgg.summary()
+from keras import Sequential
+model = Sequential()
+for layer in vgg.layers[:-1]:
+    model.add(layer)
+for layer in model.layers:
+    layer.trainable=False
+from keras.layers import Dense
+model.add(Dense(1,activation='sigmoid'))
+model.summary()
+
+model.compile(optimizer='Adam', loss='binary_crossentropy', metrics=['accuracy'])
+H = model.fit(X_train,y_train,epochs=5, validation_data=(X_test,y_test))
+cap = cv2.VideoCapture(0)
+while True:
+    ret, frame = cap.read()
+    img = cv2.resize(frame,(224,224))
+    y_pred = detect_face_mask(img)
+
+    coods = detect_face(cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY))
+
+    for x,y,w,h in coods:
+        cv2. rectangle(frame,(x,y),(x+w,y+h),(255,0,0),3)
+        
+    if y_pred ==0:
+        
+        draw_label(frame,"mask found",(30,30),(0,255,0))
+    else:
+        draw_label(frame,"No mask",(30,30),(0,0,255))
+    
+    cv2.imshow("window", frame)
+    if cv2.waitKey(1) & 0xFF == ord('x'):
+        break
+cv2.destroyAllWindows()
+def detect_face_mask(img):
+    y_pred = (model.predict(img.reshape(1,224,224,3))> 0.5).astype("int32")
+    return y_pred[0][0]
+sample1 = cv2.imread('sample2.jpg')
+sample1 = cv2.resize(sample1,(224,224))
+detect_face_mask(sample1)
+def draw_label(img,text,pos,bg_color):
+    text_size = cv2.getTextSize(text,cv2.FONT_HERSHEY_SIMPLEX,1,cv2.FILLED)
+    end_x = pos[0] + text_size[0][0] + 2
+    end_y = pos[1] + text_size[0][1] + 2
+
+    cv2.rectangle(img,pos,(end_x,end_y),bg_color,cv2.FILLED)
+    cv2.putText(img,text,pos,cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,0),1,cv2.LINE_AA)
+haar = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
+def detect_face(img):
+    coods = haar.detectMultiScale(img)
+    return coods
+# visualize feature maps output from each block in the vgg model
+from keras.applications.vgg16 import VGG16
+from keras.applications.vgg16 import preprocess_input
+from tensorflow.keras.preprocessing.image import load_img
+from tensorflow.keras.preprocessing.image import img_to_array
+from keras.models import Model
+import matplotlib.pyplot as plt
+from numpy import expand_dims
+
+
+
+
+# load the model
+model = VGG16()
+# redefine model to output right after the first hidden layer
+ixs = [2, 5, 9, 13, 17]
+outputs = [model.layers[i].output for i in ixs]
+model = Model(inputs=model.inputs, outputs=outputs)
+# load the image with the required shape
+# convert the image to an array
+img = load_img(f'sample2.jpg', target_size=(224, 224))
+# convert the image to an array
+img = img_to_array(img)
+# expand dimensions so that it represents a single 'sample'
+img = expand_dims(img, axis=0)
+# prepare the image (e.g. scale pixel values for the vgg)
+img = preprocess_input(img)
+# get feature map for first hidden layer
+feature_maps = model.predict(img)
+# plot the output from each block
+square = 8
+for fmap in feature_maps:
+	# plot all 64 maps in an 8x8 squares
+	ix = 1
+	for _ in range(square):
+		plt.figure(figsize=(64,64))
+		for _ in range(square):
+           
+
+			# specify subplot and turn of axis
+			ax = plt.subplot(square, square, ix)
+			ax.set_xticks([])
+			ax.set_yticks([])
+			
+			# plot filter channel in grayscale
+			plt.imshow(fmap[0, :, :, ix-1], cmap='viridis')
+			ix += 1
+	# show the figure
+
+        
+	plt.show()
+import matplotlib.pyplot as plt
+# N = 5
+# plt.style.use("ggplot")
+# ax = plt.gca()
+# ax.set_facecolor('white')
+# plt.figure()
+# plt.plot(np.arange(0, N), H.history["loss"], label="train_loss")
+# plt.plot(np.arange(0, N), H.history["val_loss"], label="val_loss")
+# plt.plot(np.arange(0, N), H.history["accuracy"], label="train_acc")
+# plt.plot(np.arange(0, N), H.history["val_accuracy"], label="val_acc")
+# plt.title("Training Loss and Accuracy")
+# plt.xlabel("Epoch")
+# plt.ylabel("Loss/Accuracy")
+# plt.legend(loc="lower left")
+# plt.show()
+# plt.savefig("plot.png")
+N = 5
+
+# plt.style.use("ggplot")
+plt.figure(0)
+plt.plot(np.arange(0, N), H.history["accuracy"], label="train_acc")
+plt.plot(np.arange(0, N), H.history["val_accuracy"], label="val_acc")
+plt.title('Accuracy')
+plt.xlabel('epochs')
+plt.ylabel('accuracy')
+plt.legend(loc="lower left")
+ax = plt.gca()
+ax.set_facecolor('white')
+plt.grid(color='black', linestyle='-', linewidth=0.2)
+#plt.savefig("plot1.png")
+
+ax = plt.gca()
+ax.set_facecolor('white')
+plt.figure(1)
+plt.plot(np.arange(0, N), H.history["loss"], label="train_loss")
+plt.plot(np.arange(0, N), H.history["val_loss"], label="val_loss")
+plt.title('Loss')
+plt.xlabel('epochs')
+plt.ylabel('loss')
+plt.legend(loc="lower left")
+plt.grid(color='black', linestyle='-', linewidth=0.2)
+#plt.savefig("plot2.png")
